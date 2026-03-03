@@ -54,7 +54,7 @@ spec:
       component:  redis
       project: roboshop 
       tier: database   # has to match .spec.template.metadata.labels
-  serviceName: " redis-headless"
+  serviceName: "redis-headless"
   replicas: 2 # by default is 1
   template:
     metadata:
