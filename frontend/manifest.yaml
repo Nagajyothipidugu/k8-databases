@@ -1,14 +1,14 @@
-apiVersion: v1 
+apiVersion: v1
 kind: ConfigMap
-metadata: 
-  name: frontend
+metadata:
+  name: nginx-conf
   namespace: roboshop
-  labels: 
+  labels:
     component: frontend
-    project: roboshop 
-    tier: 
-data :
-  nginx.conf: 
+    project: roboshop
+    tier: web
+data:
+  nginx.conf: |
     user nginx;
     worker_processes auto;
     error_log /var/log/nginx/error.log notice;
@@ -70,82 +70,76 @@ data :
             }
 
         }
-    } 
-  
+    }
 ---
 apiVersion: apps/v1
 kind: Deployment
-metadata: 
-    name: frontend
-    namespace: roboshop
-    # These are deployment labels
-    labels: 
+metadata:
+  name: frontend
+  namespace: roboshop
+  # deployment labels
+  labels:
+    component: frontend
+    project: roboshop
+    tier: web
+spec:
+  replicas: 1
+  # These are the labels replica set use to create pod replicas, this should match pod labels
+  selector:
+    matchLabels:
       component: frontend
-      project: roboshop 
+      project: roboshop
       tier: web
-spec: 
- replicas: 1
- # These are the labels replica set uses to create pod replicas,this should match pod labels
- selector: 
-   matchLabels: 
-      component: frontend
-      project: roboshop 
-      tier: web
-    
- # This is Pod definition     
- template: 
-   metadata: 
-     labels: 
+  # This is pod definition
+  template:
+    metadata:
+      labels:
         component: frontend
-        project: roboshop 
+        project: roboshop
         tier: web
-   spec: 
-     containers:
-       - name: frontend
-         image: jyothinaga/frontend:v1
-         resources: 
-           requests: 
-             cpu:  "50m"
-             memory: "128Mi"
-           limits: 
-             cpu: "100m" 
-             memory: "256Mi"
-         volumeMounts:
-           - name: nginx-conf
-             mountPath: /etc/nginx/nginx.conf
-             subPath: nginx.conf
-             readOnly: true 
-     volumes: 
-       - name: nginx-conf 
-         configMap: 
-           name: frontend 
-           items:  
-            - key: nginx.conf 
-              path: nginx.conf
-           
-           
+    spec:
+      containers:
+      - name: frontend
+        image: joindevops/frontend:v1
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+          limits:
+            cpu: "100m"
+            memory: "256Mi"
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: nginx-conf
+            items:
+              - key: nginx.conf
+                path: nginx.conf
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
   namespace: roboshop
-  #service labels 
-  labels: 
-     component: frontend
-     project: roboshop 
-     tier: web
-spec: 
-  type: LoadBalancer
-  selector: 
+  labels:
     component: frontend
-    project: roboshop 
+    project: roboshop
     tier: web
-  ports: 
-   - protocol: TCP 
-     port:  80 # Service Port
-     targetPort: 8080 # container port     
-
+spec:
+  type: LoadBalancer
+  selector:
+    component: frontend
+    project: roboshop
+    tier: web
+  ports:
+  - protocol: TCP
+    port: 80 # service port
+    targetPort: 8080 # container port
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -165,4 +159,4 @@ spec:
       name: cpu
       target:
         type: Utilization
-        averageUtilization: 10 
+        averageUtilization: 10
